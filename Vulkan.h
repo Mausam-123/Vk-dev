@@ -63,8 +63,18 @@ public:
 		vkDeviceWaitIdle(vk_device);
 	};
 
+	void vk_set_framebuffer_resized(void) {
+		vk_framebuffer_resized = true;
+	};
+
+	vk_simple_triangle* vk_get_this_pointer(void) {
+		return this;
+	}
+
 	~vk_simple_triangle();
+
 private:
+	GLFWwindow* Window_dim;
 	VkInstance vk_instance;
 	VkDebugUtilsMessengerEXT vk_debug_messenger;
 	VkSurfaceKHR vk_surface;
@@ -92,6 +102,7 @@ private:
 
 	//Framebuffers
 	std::vector<VkFramebuffer> swapchain_framebuffer;
+	bool vk_framebuffer_resized = false;
 
 	//CommandBUffers
 	VkCommandPool vk_command_pool;
@@ -123,6 +134,8 @@ private:
 	VkExtent2D choose_swap_extent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR capabilities);
 	void vk_create_swapchain(GLFWwindow* window);
 	void vk_create_swapchain_image_view(void);
+	void vk_recreate_swapchain(void);
+	void vk_cleanup_swapchain(void);
 	
 	//Functions to create Pipeline
 	void vk_create_pipeline(void);

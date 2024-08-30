@@ -180,3 +180,13 @@ void vk_simple_triangle::vk_create_swapchain_image_view(void) {
 		}
 	}
 }
+
+void vk_simple_triangle::vk_recreate_swapchain() {
+	vkDeviceWaitIdle(vk_device);
+
+	vk_cleanup_swapchain();
+
+	vk_create_swapchain(Window_dim);
+	vk_create_swapchain_image_view();
+	vk_create_framebuffer();
+}

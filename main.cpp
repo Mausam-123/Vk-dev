@@ -10,6 +10,11 @@
 GLFWwindow* Window;
 vk_simple_triangle vk_triangle;
 
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+	auto app = reinterpret_cast<vk_simple_triangle*>(glfwGetWindowUserPointer(window));
+	vk_triangle.vk_set_framebuffer_resized();
+}
+
 void initWindow(std::string wName = "Test Window", const int width = 800, const int height = 600)
 {
 	// Initialise GLFW
@@ -20,6 +25,10 @@ void initWindow(std::string wName = "Test Window", const int width = 800, const 
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	Window = glfwCreateWindow(width, height, wName.c_str(), nullptr, nullptr);
+
+	glfwSetWindowUserPointer(Window,vk_triangle.vk_get_this_pointer());
+	glfwSetFramebufferSizeCallback(Window, framebufferResizeCallback);
+
 }
 int main() {
 	initWindow("Test Window", 800, 600);

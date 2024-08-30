@@ -29,8 +29,23 @@ int vk_simple_triangle::vk_init(GLFWwindow* window) {
 
 	return EXIT_SUCCESS;
 }
+void vk_simple_triangle::vk_cleanup_swapchain() {
+	//Destroy Framebuffer
+	for (size_t i = 0; i < swapchain_framebuffer.size(); i++) {
+		vkDestroyFramebuffer(vk_device, swapchain_framebuffer[i], nullptr);
+	}
+
+	//Destroy Image View
+	for (auto& i : swapchain_image_view) {
+		vkDestroyImageView(vk_device, i, nullptr);
+	}
+
+	//Destroy Swapchain
+	vkDestroySwapchainKHR(vk_device, vk_swapchain, nullptr);
+}
 
 void vk_simple_triangle::vk_cleanup() {
+	vk_cleanup_swapchain();
 	//Destroy Sync objects
 	for (size_t i = 0; i < MAX_NUMBER_OF_FRAMES_INFLIGHT; i++) {
 		vkDestroySemaphore(vk_device, image_available_sync[i], nullptr);
@@ -41,24 +56,12 @@ void vk_simple_triangle::vk_cleanup() {
 	//Destroy Command Pool
 	vkDestroyCommandPool(vk_device, vk_command_pool, nullptr);
 
-	//Destroy Framebuffer
-	for (size_t i = 0; i < swapchain_framebuffer.size(); i++) {
-		vkDestroyFramebuffer(vk_device, swapchain_framebuffer[i], nullptr);
-	}
-
 	//Destroy pipeline
 	vkDestroyPipeline(vk_device, vk_graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(vk_device, vk_pipelineLayout, nullptr);
 	vkDestroyRenderPass(vk_device, vk_render_pass, nullptr);
 	vkDestroyShaderModule(vk_device, vertex_shader_module, nullptr);
 	vkDestroyShaderModule(vk_device, frag_shader_module, nullptr);
-
-	//Destroy Image View
-	for (auto& i : swapchain_image_view) {
-		vkDestroyImageView(vk_device, i, nullptr);
-	}
-	//Destroy swapchain
-	vkDestroySwapchainKHR(vk_device, vk_swapchain, nullptr);
 
 	//Destroy logical device
 	vkDestroyDevice(vk_device, nullptr);
@@ -170,6 +173,7 @@ void vk_simple_triangle::vk_create_surface(GLFWwindow* window) {
 	if (result != VK_SUCCESS) {
 		throw std::runtime_error("Unable to create Window Surface");
 	}
+	Window_dim = window;
 }
 
 QueueFamilyIndices vk_simple_triangle::findQueueFamilyIndices(VkPhysicalDevice device) {

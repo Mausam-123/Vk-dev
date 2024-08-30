@@ -109,21 +109,33 @@ void vk_simple_triangle::vk_record_command_buffer(VkCommandBuffer command_buffer
 }
 
 void vk_simple_triangle::vk_draw_frame_on_screen() {
+	VkResult result = VK_ERROR_UNKNOWN;
 	uint32_t available_image_index;
 
 	//Wait for previous frame to finish rendering
 	vkWaitForFences(vk_device, 1, &frame_render_sync[vk_current_frame], VK_TRUE, UINT64_MAX);
-	vkResetFences(vk_device, 1, &frame_render_sync[vk_current_frame]);
 
 	//Acquire the next frame once available
-	vkAcquireNextImageKHR(vk_device, vk_swapchain, UINT64_MAX, image_available_sync[vk_current_frame], VK_NULL_HANDLE, &available_image_index);
+	result = vkAcquireNextImageKHR(vk_device, vk_swapchain, UINT64_MAX, image_available_sync[vk_current_frame], VK_NULL_HANDLE, &available_image_index);
+	
+	if (VK_ERROR_OUT_OF_DATE_KHR == result) {
+		vk_framebuffer_resized = VK_FALSE;
+		vk_recreate_swapchain();
+		return;
+	}
+	else if ((VK_SUCCESS != result) && (VK_SUBOPTIMAL_KHR != result)) {
+		throw std::runtime_error("Failed to acquire swap chain image");
+	}
+
+	//Reset fence
+	vkResetFences(vk_device, 1, &frame_render_sync[vk_current_frame]);
 
 	//Once image is available draw and submit to Queue
 	vkResetCommandBuffer(vk_command_buffer[vk_current_frame], 0);
 	vk_record_command_buffer(vk_command_buffer[vk_current_frame], available_image_index);
 
-	VkSemaphore wait_semaphore [] = { image_available_sync[vk_current_frame] };
-	VkSemaphore signal_semaphore [] = { render_finish_sync[vk_current_frame] };
+	VkSemaphore wait_semaphore[] = { image_available_sync[vk_current_frame] };
+	VkSemaphore signal_semaphore[] = { render_finish_sync[vk_current_frame] };
 	VkPipelineStageFlags pipeline_wait_stage[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	VkSubmitInfo submit_command_buffer = {};
@@ -137,8 +149,12 @@ void vk_simple_triangle::vk_draw_frame_on_screen() {
 	submit_command_buffer.signalSemaphoreCount = 1;
 	submit_command_buffer.pSignalSemaphores = signal_semaphore;
 
-	VkResult result = vkQueueSubmit(vk_graphics_queue, 1, &submit_command_buffer, frame_render_sync[vk_current_frame]);
+	result = vkQueueSubmit(vk_graphics_queue, 1, &submit_command_buffer, frame_render_sync[vk_current_frame]);
 	//Once processing is done it will signal "frame_render_sync" fence
+
+	if (VK_SUCCESS != result) {
+		throw std::runtime_error("Failed to submit work to queue");
+	}
 
 	VkSwapchainKHR swap_chains[] = { vk_swapchain };
 
@@ -153,7 +169,15 @@ void vk_simple_triangle::vk_draw_frame_on_screen() {
 	present_image.pImageIndices = &available_image_index;
 	present_image.pResults = nullptr;
 
-	vkQueuePresentKHR(vk_present_queue, &present_image);
+	result = vkQueuePresentKHR(vk_present_queue, &present_image);
+
+	if ((VK_ERROR_OUT_OF_DATE_KHR == result) || (VK_SUBOPTIMAL_KHR == result) || (vk_framebuffer_resized)) {
+		vk_framebuffer_resized = VK_FALSE;
+		vk_recreate_swapchain();
+	}
+	else if (VK_SUCCESS != result) {
+		throw std::runtime_error("Failed to present swap chain image");
+	}
 
 	vk_current_frame = (vk_current_frame + 1) % MAX_NUMBER_OF_FRAMES_INFLIGHT;
 }
